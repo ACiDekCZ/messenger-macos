@@ -235,7 +235,7 @@ extension NotificationManager: UNUserNotificationCenterDelegate {
             }
             // Fallback: change URL (causes reload but works)
             console.log("[JS-Nav] Sidebar link not found, falling back to URL change");
-            window.location.href = 'https://www.messenger.com/t/\(id)';
+            window.location.href = 'https://www.facebook.com/messages/t/\(id)';
             return false;
         })()
         """

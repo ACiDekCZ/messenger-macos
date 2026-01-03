@@ -51,7 +51,7 @@ struct WebView: NSViewRepresentable {
         // Observe system appearance changes for dark/light mode
         context.coordinator.observeAppearanceChanges(webView: webView)
 
-        // Load last URL or default to messenger.com
+        // Load last URL or default to facebook.com/messages
         let url = AppDelegate.getLastURL()
         webView.load(URLRequest(url: url))
 
@@ -700,39 +700,12 @@ struct WebView: NSViewRepresentable {
                 return nil
             }
 
-            // Facebook/Messenger internal popup - create with shared session
+            // Facebook/Messenger internal link - navigate in same window (user can use back button)
             #if DEBUG
-            print("[Popup] >>> INTERNAL FB/MESSENGER - creating popup with shared session")
+            print("[Popup] >>> INTERNAL FB/MESSENGER - navigating in main webview")
             #endif
-
-            // IMPORTANT: Use shared processPool and dataStore for session sharing
-            configuration.processPool = WebView.processPool
-            configuration.websiteDataStore = .default()
-
-            let popupWebView = WKWebView(frame: .zero, configuration: configuration)
-            popupWebView.navigationDelegate = self
-            popupWebView.uiDelegate = self
-            popupWebView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
-
-            // Determine window size
-            let width = windowFeatures.width?.doubleValue ?? 800
-            let height = windowFeatures.height?.doubleValue ?? 600
-
-            // Create window
-            let window = NSWindow(
-                contentRect: NSRect(x: 100, y: 100, width: width, height: height),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable],
-                backing: .buffered,
-                defer: false
-            )
-            window.contentView = popupWebView
-            window.title = "Messenger"
-            window.center()
-            window.makeKeyAndOrderFront(nil)
-
-            popupWindows.append(window)
-
-            return popupWebView
+            WebViewStore.shared.webView?.load(URLRequest(url: url))
+            return nil
         }
 
         /// Open URL in browser (Chrome if "Open calls in Chrome" is enabled, otherwise default)
