@@ -198,6 +198,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
            url.host?.contains("messenger.com") == true || url.host?.contains("facebook.com") == true {
             return url
         }
-        return URL(string: "https://www.messenger.com")!
+        return URL(string: "https://www.facebook.com/messages")!
     }
 }
