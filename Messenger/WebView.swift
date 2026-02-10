@@ -55,6 +55,9 @@ struct WebView: NSViewRepresentable {
         // Start network monitoring for auto-reconnect after sleep
         context.coordinator.startNetworkMonitoring(webView: webView)
 
+        // Start wake from sleep monitoring
+        context.coordinator.startWakeMonitoring(webView: webView)
+
         // Load last URL or default to facebook.com/messages
         let url = AppDelegate.getLastURL()
         webView.load(URLRequest(url: url))
@@ -371,6 +374,8 @@ struct WebView: NSViewRepresentable {
         private var wasDisconnected = false
         private var lastReconnectReload: Date? = nil
         private var crashRecoveryTimes: [Date] = []
+        private var wakeObserver: NSObjectProtocol?
+        private var lastWakeReload: Date? = nil
 
         func observeTitle(webView: WKWebView) {
             titleObservation = webView.observe(\.title, options: [.new]) { [weak self] _, change in
@@ -429,6 +434,36 @@ struct WebView: NSViewRepresentable {
             }
         }
 
+        // MARK: - Wake from Sleep Monitoring
+
+        func startWakeMonitoring(webView: WKWebView) {
+            wakeObserver = NotificationCenter.default.addObserver(
+                forName: NSWorkspace.didWakeNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self, weak webView] _ in
+                guard let self = self, let webView = webView else { return }
+
+                // Throttle: don't reload if we reloaded recently (within 60 seconds)
+                if let lastWake = self.lastWakeReload,
+                   Date().timeIntervalSince(lastWake) < 60 {
+                    print("[Connection] Wake detected but skipping reload (throttled)")
+                    return
+                }
+
+                print("[Connection] ⚡️ System woke from sleep - scheduling WebView reload...")
+
+                // Wait 5 seconds for network to stabilize
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self, weak webView] in
+                    guard let self = self, let webView = webView else { return }
+                    self.lastWakeReload = Date()
+                    print("[Connection] Reloading WebView after wake")
+                    webView.reload()
+                }
+            }
+            print("[Connection] Wake monitoring started")
+        }
+
         // MARK: - Network Monitoring (Auto-reconnect after sleep)
 
         func startNetworkMonitoring(webView: WKWebView) {
@@ -441,37 +476,30 @@ struct WebView: NSViewRepresentable {
                         // Throttle: don't reload if we reloaded recently (within 30 seconds)
                         if let lastReload = self.lastReconnectReload,
                            Date().timeIntervalSince(lastReload) < 30 {
-                            #if DEBUG
-                            print("[Network] Reconnected but skipping reload (throttled)")
-                            #endif
+                            print("[Connection] Network reconnected but skipping reload (throttled)")
                             self.wasDisconnected = false
                             return
                         }
 
-                        #if DEBUG
-                        print("[Network] Reconnected - will reload page in 3 seconds...")
-                        #endif
+                        print("[Connection] 🔌 Network reconnected - will reload page in 3 seconds...")
 
                         // Wait 3 seconds for network to stabilize before reloading
                         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
                             guard let self = self else { return }
                             self.lastReconnectReload = Date()
-                            #if DEBUG
-                            print("[Network] Reloading page now")
-                            #endif
+                            print("[Connection] Reloading WebView now (network reconnect)")
                             webView.reload()
                         }
                         self.wasDisconnected = false
                     }
                 } else {
                     // Network lost
-                    #if DEBUG
-                    print("[Network] Connection lost")
-                    #endif
+                    print("[Connection] ❌ Network connection lost")
                     self.wasDisconnected = true
                 }
             }
             networkMonitor.start(queue: DispatchQueue.global(qos: .background))
+            print("[Connection] Network monitoring started")
         }
 
         // MARK: - WKScriptMessageHandler
@@ -513,8 +541,8 @@ struct WebView: NSViewRepresentable {
                 self.pendingBadgeWorkItem?.cancel()
                 self.pendingBadgeWorkItem = nil
                 self.pendingBadgeCount = nil
-                // Also clear the actual badge - it was a Bell notification, not a message
-                self.lastBadgeValue = nil
+                // Clear the visual badge but KEEP lastBadgeValue
+                // This prevents re-triggering for the same badge count (e.g. Bell notifications)
                 self.lastUnreadCount = 0
                 NSApp.dockTile.badgeLabel = nil
                 NSApp.dockTile.display()
@@ -1046,21 +1074,18 @@ struct WebView: NSViewRepresentable {
             crashRecoveryTimes = crashRecoveryTimes.filter { now.timeIntervalSince($0) < 30 }
             crashRecoveryTimes.append(now)
 
-            #if DEBUG
-            print("[WebView] WebContent process terminated (crash #\(crashRecoveryTimes.count) in last 30s)")
-            #endif
+            print("[Connection] 💥 WebContent process terminated (crash #\(crashRecoveryTimes.count) in last 30s)")
 
             // If more than 3 crashes in 30s, crash loop detected
             if crashRecoveryTimes.count > 3 {
-                #if DEBUG
-                print("[WebView] Crash loop detected - navigating to safe page")
-                #endif
+                print("[Connection] 🔄 Crash loop detected - navigating to safe page")
                 crashRecoveryTimes = []
                 webView.load(URLRequest(url: URL(string: "https://www.facebook.com/messages")!))
                 return
             }
 
             // Normal recovery: reload after 0.5s
+            print("[Connection] Recovering from crash - reloading in 0.5s")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 webView.reload()
             }
@@ -1073,9 +1098,7 @@ struct WebView: NSViewRepresentable {
             // Ignore cancelled requests (user navigated away)
             if nsError.code == NSURLErrorCancelled { return }
 
-            #if DEBUG
-            print("[WebView] Provisional navigation failed: \(error.localizedDescription)")
-            #endif
+            print("[Connection] ⚠️ Provisional navigation failed: \(error.localizedDescription) (code: \(nsError.code))")
 
             // Network monitor will handle reconnection - no auto-reload here
         }
@@ -1087,9 +1110,7 @@ struct WebView: NSViewRepresentable {
             // Ignore cancelled requests
             if nsError.code == NSURLErrorCancelled { return }
 
-            #if DEBUG
-            print("[WebView] Navigation failed: \(error.localizedDescription)")
-            #endif
+            print("[Connection] ⚠️ Navigation failed: \(error.localizedDescription) (code: \(nsError.code))")
 
             // Network monitor will handle reconnection - no auto-reload here
         }
