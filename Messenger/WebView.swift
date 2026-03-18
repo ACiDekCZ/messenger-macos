@@ -58,9 +58,22 @@ struct WebView: NSViewRepresentable {
         // Start wake from sleep monitoring
         context.coordinator.startWakeMonitoring(webView: webView)
 
-        // Load last URL or default to facebook.com/messages
-        let url = AppDelegate.getLastURL()
-        webView.load(URLRequest(url: url))
+        // Clear disk cache and service worker registrations on startup
+        // Keeps cookies and localStorage (login session) but removes stale cached data
+        let dataStore = WKWebsiteDataStore.default()
+        let cacheTypes: Set<String> = [
+            WKWebsiteDataTypeDiskCache,
+            WKWebsiteDataTypeMemoryCache,
+            WKWebsiteDataTypeServiceWorkerRegistrations,
+            WKWebsiteDataTypeFetchCache
+        ]
+        dataStore.removeData(ofTypes: cacheTypes, modifiedSince: .distantPast) {
+            print("[Connection] Cleared WebView cache (disk, memory, service workers, fetch)")
+        }
+
+        // Always start at /messages
+        let url = URL(string: "https://www.facebook.com/messages")!
+        webView.load(URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData))
 
         return webView
     }
@@ -437,7 +450,7 @@ struct WebView: NSViewRepresentable {
         // MARK: - Wake from Sleep Monitoring
 
         func startWakeMonitoring(webView: WKWebView) {
-            wakeObserver = NotificationCenter.default.addObserver(
+            wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
                 forName: NSWorkspace.didWakeNotification,
                 object: nil,
                 queue: .main
@@ -961,24 +974,9 @@ struct WebView: NSViewRepresentable {
             }
         }
 
-        /// Check if notification title/body indicates an incoming call
+        /// Check if notification title indicates an incoming call
+        /// Only checks title, NOT body - body can contain "volá" in normal messages
         private func isCallNotification(title: String, body: String) -> Bool {
-            let callKeywordsString = String(localized: "call.keywords")
-            let callKeywords = callKeywordsString.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
-
-            let titleLower = title.lowercased()
-            let bodyLower = body.lowercased()
-
-            for keyword in callKeywords {
-                if titleLower.contains(keyword) || bodyLower.contains(keyword) {
-                    return true
-                }
-            }
-            return false
-        }
-
-        /// Check if page title indicates an incoming call (e.g. "Name volá", "Name is calling")
-        private func isCallTitle(_ title: String) -> Bool {
             let callKeywordsString = String(localized: "call.keywords")
             let callKeywords = callKeywordsString.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
 
@@ -986,6 +984,25 @@ struct WebView: NSViewRepresentable {
 
             for keyword in callKeywords {
                 if titleLower.contains(keyword) {
+                    return true
+                }
+            }
+            return false
+        }
+
+        /// Check if page title indicates an incoming call (e.g. "Name volá", "Name is calling")
+        /// Title must END with the keyword to avoid false positives from message previews
+        private func isCallTitle(_ title: String) -> Bool {
+            let callKeywordsString = String(localized: "call.keywords")
+            let callKeywords = callKeywordsString.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+
+            let titleLower = title.lowercased().trimmingCharacters(in: .whitespaces)
+
+            // Title must not contain "Messenger" - call titles are just "Name volá"
+            if titleLower.contains("messenger") { return false }
+
+            for keyword in callKeywords {
+                if titleLower.hasSuffix(keyword) {
                     return true
                 }
             }
