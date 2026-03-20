@@ -6,8 +6,15 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		AA0000000000000000000003 /* ScheduleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000001 /* ScheduleManager.swift */; };
+		AA0000000000000000000004 /* ScheduleTaskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000002 /* ScheduleTaskView.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		0C95F2012EF42D3100447E37 /* Messenger.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Messenger.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA0000000000000000000001 /* ScheduleManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleManager.swift; sourceTree = "<group>"; };
+		AA0000000000000000000002 /* ScheduleTaskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleTaskView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -34,6 +41,8 @@
 			children = (
 				0C95F2032EF42D3100447E37 /* Messenger */,
 				0C95F2022EF42D3100447E37 /* Products */,
+				AA0000000000000000000001 /* ScheduleManager.swift */,
+				AA0000000000000000000002 /* ScheduleTaskView.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -120,6 +129,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AA0000000000000000000003 /* ScheduleManager.swift in Sources */,
+				AA0000000000000000000004 /* ScheduleTaskView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

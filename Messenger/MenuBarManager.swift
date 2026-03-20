@@ -32,6 +32,7 @@ class MenuBarManager: NSObject, ObservableObject {
     private var floatingMenuItem: NSMenuItem?
     private var filterMenuItem: NSMenuItem?
     private var openInChromeMenuItem: NSMenuItem?
+    private var scheduleTaskMenuItem: NSMenuItem?
     private var contextMenu: NSMenu?
 
     private func setupMenu() {
@@ -40,6 +41,10 @@ class MenuBarManager: NSObject, ObservableObject {
 
         menu.addItem(NSMenuItem(title: String(localized: "menu.openMessenger"), action: #selector(showWindow), keyEquivalent: "o"))
         menu.addItem(NSMenuItem(title: String(localized: "menu.newMessage"), action: #selector(newMessage), keyEquivalent: "n"))
+
+        scheduleTaskMenuItem = NSMenuItem(title: String(localized: "menu.scheduleTask"), action: #selector(openScheduleTask), keyEquivalent: "")
+        menu.addItem(scheduleTaskMenuItem!)
+
         menu.addItem(NSMenuItem.separator())
 
         floatingMenuItem = NSMenuItem(title: String(localized: "menu.alwaysOnTop"), action: #selector(toggleFloating), keyEquivalent: "")
@@ -209,6 +214,11 @@ class MenuBarManager: NSObject, ObservableObject {
         NotificationCenter.default.post(name: .newMessageRequested, object: nil)
     }
 
+    @objc private func openScheduleTask() {
+        NotificationCenter.default.post(name: .scheduleTaskRequested, object: nil)
+        showWindow()
+    }
+
     @objc private func quit() {
         NSApp.terminate(nil)
     }
@@ -216,6 +226,7 @@ class MenuBarManager: NSObject, ObservableObject {
 
 extension Notification.Name {
     static let newMessageRequested = Notification.Name("newMessageRequested")
+    static let scheduleTaskRequested = Notification.Name("scheduleTaskRequested")
 }
 
 extension MenuBarManager: NSMenuDelegate {

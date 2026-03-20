@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @ObservedObject private var webViewStore = WebViewStore.shared
+    @State private var showScheduleTask = false
 
     var body: some View {
         ZStack {
@@ -47,6 +48,12 @@ struct ContentView: View {
                 }
                 Spacer()
             }
+        }
+        .sheet(isPresented: $showScheduleTask) {
+            ScheduleTaskView()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .scheduleTaskRequested)) { _ in
+            showScheduleTask = true
         }
     }
 }

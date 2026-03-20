@@ -40,6 +40,14 @@ struct MessengerApp: App {
                 .keyboardShortcut("r", modifiers: .command)
             }
 
+            // File menu - schedule task
+            CommandGroup(after: .newItem) {
+                Button(String(localized: "menu.scheduleTask")) {
+                    NotificationCenter.default.post(name: .scheduleTaskRequested, object: nil)
+                }
+                .keyboardShortcut("s", modifiers: [.command, .shift])
+            }
+
             // Edit menu - search
             CommandGroup(after: .pasteboard) {
                 Button(String(localized: "menu.search")) {
